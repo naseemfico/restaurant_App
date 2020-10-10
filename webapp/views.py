@@ -15,15 +15,17 @@ from django.conf import settings
 def index(request):
 	return render(request,'webapp/index.html',{})
 
-def orderplaced(request):
-    message_to_broadcast = ("you have received your order")
+def orderplaced(order_id, customer_name):
+    message_to_broadcast = (
+        f'We have received your request {customer_name.capitalize()}. Your order number is {order_id}')
+
     client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
     for recipient in settings.SMS_BROADCAST_TO_NUMBERS:
         if recipient:
             client.messages.create(to=recipient,
                                    from_=settings.TWILIO_NUMBER,
                                    body=message_to_broadcast)
-            return render(request,'webapp/orderplaced.html',status=200)
+#             return render(request,'webapp/orderplaced.html',status=200) 'no need for this line
 
 # Showing Restaurants list to Customer
 def restuarent(request):
@@ -156,9 +158,14 @@ def checkout(request):
 	if request.POST:
 		addr  = request.POST['address']
 		ordid = request.POST['oid']
+		customer_name = request.user.username
 		Order.objects.filter(id=int(ordid)).update(delivery_addr = addr,
                                                     status=Order.ORDER_STATE_PLACED)
-		return redirect('/orderplaced/')
+		
+		orderplaced(order_id=ordid, customer_name= customer_name) #call this function
+		return render(request, 'webapp/orderplaced.html')
+	
+# 		return redirect('/orderplaced/') # no need for this redirect
 	else:	
 		cart = request.COOKIES['cart'].split(",")
 		cart = dict(Counter(cart))
